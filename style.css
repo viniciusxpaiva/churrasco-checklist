@@ -281,3 +281,9 @@ button:hover{ background: rgba(255,255,255,.10); }
     grid-template-columns: 1fr 1fr;
   }
 }
+
+.food-card.is-marked {
+  border-color: #2fbf71; /* verde destaque */
+  box-shadow: 0 0 0 1px rgba(47, 191, 113, 0.35);
+}
+

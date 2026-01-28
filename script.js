@@ -135,7 +135,12 @@ function getGroup(food) {
  ***********************/
 function createFoodCard(food) {
   const card = document.createElement("div");
-  card.className = "food-card";
+card.className = "food-card";
+
+// se já foi marcado pelo menos 1 vez
+if ((food.count || 0) > 0) {
+  card.classList.add("is-marked");
+}
 
   const main = document.createElement("div");
 
@@ -155,7 +160,7 @@ function createFoodCard(food) {
 
   const btnEat = document.createElement("button");
   btnEat.className = "small primary";
-  btnEat.textContent = "Comemos ✅";
+  btnEat.textContent = "Adicionar";
   btnEat.addEventListener("click", async () => {
     try {
       const newState = await markFood(food.id);
