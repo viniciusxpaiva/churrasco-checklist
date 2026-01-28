@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Checklist do Churrasco</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body>
+    <div class="app-shell">
+      <header class="top-bar">
+        <h1>Checklist do Churrasco</h1>
+      </header>
+
+      <main class="card">
+        <!-- CHURRASCO -->
+        <section class="card-section">
+          <div class="section-header">
+            <h2 class="section-title">Churrasco 🍖</h2>
+            <div class="pill" id="summary-pill">0 itens • 0 marcas</div>
+          </div>
+
+          <div id="foods-grid-churrasco" class="foods-grid"></div>
+        </section>
+
+        <div class="divider"></div>
+
+        <!-- SOBREMESAS -->
+        <section class="card-section">
+          <div class="section-header">
+            <h2 class="section-title">Sobremesas 🍰</h2>
+          </div>
+
+          <div id="foods-grid-sobremesas" class="foods-grid"></div>
+        </section>
+
+        <div class="divider"></div>
+
+        <!-- ADICIONAR COMIDA (vem depois das listas) -->
+        <section class="card-section">
+          <div class="section-header">
+            <h2 class="section-title">Adicionar comida</h2>
+
+            <button id="btn-reset" class="icon-button" aria-label="Zerar tudo" type="button">
+              🧹
+            </button>
+          </div>
+
+          <form id="add-form" class="add-form">
+            <label class="field">
+              <span>Nome</span>
+              <input id="food-name" type="text" placeholder="Ex.: Linguiça" required />
+            </label>
+
+            <button class="primary" type="submit">Adicionar</button>
+          </form>
+        </section>
+
+        <div class="divider"></div>
+
+        <!-- Histórico -->
+        <section class="card-section">
+          <div class="section-header">
+            <h2 class="section-title">Últimas marcas</h2>
+            <button id="btn-clear-log" class="ghost" type="button">
+              Limpar histórico
+            </button>
+          </div>
+
+          <ul id="log-list" class="log-list"></ul>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <p>© 2026</p>
+      </footer>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+    <script src="script.js?v=20260128-1"></script>
+  </body>
+</html>
