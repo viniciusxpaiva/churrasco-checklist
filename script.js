@@ -186,7 +186,7 @@ function render(state) {
   const pill = el("summary-pill");
 
   const { items, totalMarks } = computeSummary(state);
-  if (pill) pill.textContent = `${items} itens • ${totalMarks} marcas`;
+  if (pill) pill.textContent = `${items} itens`;
 
   // Foods (duas seções)
   if (gridChurrasco) gridChurrasco.innerHTML = "";
