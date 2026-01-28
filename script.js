@@ -211,7 +211,7 @@ function render(state) {
       li.innerHTML = `
         <div class="log-left">
           <div class="log-food">Nada ainda</div>
-          <div class="log-meta">Comece marcando uma comida 😄</div>
+          <div class="log-meta">Comece marcando uma comida</div>
         </div>`;
       logList.appendChild(li);
     } else {
