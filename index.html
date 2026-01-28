@@ -18,7 +18,7 @@
         <section class="card-section">
           <div class="section-header">
             <h2 class="section-title">Churrasco 🍖</h2>
-            <div class="pill" id="summary-pill">0 itens • 0 marcas</div>
+            <div class="pill" id="summary-pill">0 itens • 0 marcados</div>
           </div>
 
           <div id="foods-grid-churrasco" class="foods-grid"></div>
@@ -37,12 +37,17 @@
 
         <div class="divider"></div>
 
-        <!-- ADICIONAR COMIDA (vem depois das listas) -->
+        <!-- ADICIONAR COMIDA -->
         <section class="card-section">
           <div class="section-header">
             <h2 class="section-title">Adicionar comida</h2>
 
-            <button id="btn-reset" class="icon-button" aria-label="Zerar tudo" type="button">
+            <button
+              id="btn-reset"
+              class="icon-button"
+              aria-label="Zerar tudo"
+              type="button"
+            >
               🧹
             </button>
           </div>
@@ -50,7 +55,12 @@
           <form id="add-form" class="add-form">
             <label class="field">
               <span>Nome</span>
-              <input id="food-name" type="text" placeholder="Ex.: Linguiça" required />
+              <input
+                id="food-name"
+                type="text"
+                placeholder="Ex.: Linguiça"
+                required
+              />
             </label>
 
             <button class="primary" type="submit">Adicionar</button>
@@ -59,16 +69,59 @@
 
         <div class="divider"></div>
 
-        <!-- Histórico -->
+        <!-- HISTÓRICO (ABAS) -->
         <section class="card-section">
           <div class="section-header">
-            <h2 class="section-title">Últimos marcados</h2>
+            <h2 class="section-title">Histórico</h2>
+
             <button id="btn-clear-log" class="ghost" type="button">
               Limpar histórico
             </button>
           </div>
 
-          <ul id="log-list" class="log-list"></ul>
+          <!-- Abas -->
+          <div class="tabs" role="tablist" aria-label="Histórico por pessoa">
+            <button
+              id="tab-erika"
+              class="tab is-active"
+              role="tab"
+              aria-selected="true"
+              aria-controls="panel-erika"
+              type="button"
+            >
+              Érika
+            </button>
+            <button
+              id="tab-vinicius"
+              class="tab"
+              role="tab"
+              aria-selected="false"
+              aria-controls="panel-vinicius"
+              type="button"
+            >
+              Vinícius
+            </button>
+          </div>
+
+          <!-- Painéis -->
+          <div
+            id="panel-erika"
+            class="tab-panel is-active"
+            role="tabpanel"
+            aria-labelledby="tab-erika"
+          >
+            <ul id="log-list-erika" class="log-list"></ul>
+          </div>
+
+          <div
+            id="panel-vinicius"
+            class="tab-panel"
+            role="tabpanel"
+            aria-labelledby="tab-vinicius"
+            hidden
+          >
+            <ul id="log-list-vinicius" class="log-list"></ul>
+          </div>
         </section>
       </main>
 
@@ -78,6 +131,6 @@
     </div>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="script.js?v=20260128-5"></script>
+    <script src="script.js?v=20260128-6"></script>
   </body>
 </html>

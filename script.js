@@ -5,34 +5,33 @@ const USE_API = true; // usa o Worker (estado compartilhado)
 const API_BASE = "https://autumn-boat-525c.viniciusxpaiva.workers.dev";
 
 // fallback local (opcional)
-const STORAGE_KEY = "churrascoChecklist_v3.3";
+const STORAGE_KEY = "churrascoChecklist_v4.0";
 
 /***********************
- * Estado padrão (fallback)
- * IMPORTANTE: no modo API, quem manda é o /state do Worker.
- * Aqui mantemos coerente e já com "group".
+ * Estado padrão (fallback local)
+ * No modo API, quem manda é o /state do Worker.
  ***********************/
 function getInitialState() {
   return {
     foods: [
       // CHURRASCO
-      { id: "camafeu-mostarda", name: "1 - Camafeu com molho de mostarda", group: "churrasco", count: 0 },
-      { id: "panceta-ancho-farofa-vinagrete", name: "2 - Panceta, bife de ancho, farofa de bacon e vinagrete", group: "churrasco", count: 0 },
-      { id: "fraldinha-batata-alcatra", name: "3 - Fraldinha, batata assada e alcatra com molho de cerveja", group: "churrasco", count: 0 },
-      { id: "picanha-mandioca", name: "4 - Picanha suína/bovina e mandioca com molho de mostarda", group: "churrasco", count: 0 },
-      { id: "costela-farofa", name: "5 - Costela com farofa", group: "churrasco", count: 0 },
-      { id: "cupim-salada", name: "6 - Cupim com salada", group: "churrasco", count: 0 },
-      { id: "pao-de-alho", name: "* Pão de alho", group: "churrasco", count: 0 },
-      { id: "coracaozinho", name: "* Coraçãozinho", group: "churrasco", count: 0 },
+      { id: "camafeu-mostarda", name: "1 - Camafeu com molho de mostarda", group: "churrasco", countErika: 0, countVinicius: 0 },
+      { id: "panceta-ancho-farofa-vinagrete", name: "2 - Panceta, bife de ancho, farofa de bacon e vinagrete", group: "churrasco", countErika: 0, countVinicius: 0 },
+      { id: "fraldinha-batata-alcatra", name: "3 - Fraldinha, batata assada e alcatra com molho de cerveja", group: "churrasco", countErika: 0, countVinicius: 0 },
+      { id: "picanha-mandioca", name: "4 - Picanha suína/bovina e mandioca com molho de mostarda", group: "churrasco", countErika: 0, countVinicius: 0 },
+      { id: "costela-farofa", name: "5 - Costela com farofa", group: "churrasco", countErika: 0, countVinicius: 0 },
+      { id: "cupim-salada", name: "6 - Cupim com salada", group: "churrasco", countErika: 0, countVinicius: 0 },
+      { id: "pao-de-alho", name: "* Pão de alho", group: "churrasco", countErika: 0, countVinicius: 0 },
+      { id: "coracaozinho", name: "* Coraçãozinho", group: "churrasco", countErika: 0, countVinicius: 0 },
 
       // SOBREMESAS
-      { id: "mousse-maracuja", name: "1 - Mousse de maracujá", group: "sobremesas", count: 0 },
-      { id: "torta-caramelo-churros", name: "2 - Torta caramelo/churros", group: "sobremesas", count: 0 },
-      { id: "pave-morango", name: "V - Pavê de morango", group: "sobremesas", count: 0 },
-      { id: "torta-ninho-nutella", name: "3 - Torta de ninho com Nutella", group: "sobremesas", count: 0 },
-      { id: "torta-pistache", name: "4 - Torta de pistache", group: "sobremesas", count: 0 },
+      { id: "mousse-maracuja", name: "1 - Mousse de maracujá", group: "sobremesas", countErika: 0, countVinicius: 0 },
+      { id: "torta-caramelo-churros", name: "2 - Torta caramelo/churros", group: "sobremesas", countErika: 0, countVinicius: 0 },
+      { id: "pave-morango", name: "V - Pavê de morango", group: "sobremesas", countErika: 0, countVinicius: 0 },
+      { id: "torta-ninho-nutella", name: "3 - Torta de ninho com Nutella", group: "sobremesas", countErika: 0, countVinicius: 0 },
+      { id: "torta-pistache", name: "4 - Torta de pistache", group: "sobremesas", countErika: 0, countVinicius: 0 },
     ],
-    log: [],
+    log: [], // { foodId, foodName, by, tsISO }
   };
 }
 
@@ -45,7 +44,7 @@ function loadLocalState() {
     if (!raw) return getInitialState();
     const parsed = JSON.parse(raw);
     if (!parsed?.foods || !parsed?.log) return getInitialState();
-    return parsed;
+    return normalizeState(parsed);
   } catch {
     return getInitialState();
   }
@@ -72,18 +71,17 @@ async function apiRequest(path, { method = "GET", body = null } = {}) {
 async function apiGetState() {
   return apiRequest("/state");
 }
-async function apiMark(foodId) {
-  const data = await apiRequest("/mark", { method: "POST", body: { foodId } });
+
+async function apiMark(foodId, by) {
+  const data = await apiRequest("/mark", { method: "POST", body: { foodId, by } });
   return data.state;
 }
-async function apiAdd(name) {
-  const data = await apiRequest("/add", { method: "POST", body: { name } });
-  return data.state;
-}
+
 async function apiClearLog() {
   const data = await apiRequest("/clear-log", { method: "POST" });
   return data.state;
 }
+
 async function apiReset() {
   const data = await apiRequest("/reset", { method: "POST" });
   return data.state;
@@ -94,24 +92,15 @@ async function apiReset() {
  ***********************/
 async function loadState() {
   if (!USE_API) return loadLocalState();
-  return apiGetState();
+  const state = await apiGetState();
+  return normalizeState(state);
 }
 
 /***********************
- * HELPERS UI
+ * HELPERS
  ***********************/
 function el(id) {
   return document.getElementById(id);
-}
-
-function safeIdFromName(name) {
-  return (name || "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "") || `food-${Date.now()}`;
 }
 
 function formatTime(tsISO) {
@@ -119,15 +108,58 @@ function formatTime(tsISO) {
   return d.toLocaleString("pt-BR");
 }
 
+function getGroup(food) {
+  return food.group === "sobremesas" ? "sobremesas" : "churrasco";
+}
+
+/**
+ * Normaliza para suportar:
+ * - estados antigos com "count"
+ * - estados sem "group"
+ * - garante countErika/countVinicius
+ */
+function normalizeState(state) {
+  const foods = (state.foods || []).map((f) => {
+    const group = getGroup(f);
+
+    // se vier o modelo antigo (count)
+    const legacyCount = typeof f.count === "number" ? f.count : null;
+
+    const countErika =
+      typeof f.countErika === "number" ? f.countErika : legacyCount ? legacyCount : 0;
+    const countVinicius =
+      typeof f.countVinicius === "number" ? f.countVinicius : 0;
+
+    return {
+      ...f,
+      group,
+      countErika,
+      countVinicius,
+    };
+  });
+
+  const log = Array.isArray(state.log) ? state.log : [];
+
+  return { ...state, foods, log };
+}
+
 function computeSummary(state) {
   const items = state.foods?.length || 0;
-  const totalMarks = (state.foods || []).reduce((acc, f) => acc + (f.count || 0), 0);
+  const totalMarks = (state.foods || []).reduce(
+    (acc, f) => acc + (f.countErika || 0) + (f.countVinicius || 0),
+    0
+  );
   return { items, totalMarks };
 }
 
-function getGroup(food) {
-  // fallback: se o Worker ainda não tiver "group", joga tudo no churrasco
-  return food.group === "sobremesas" ? "sobremesas" : "churrasco";
+function getBorderClass(food) {
+  const e = (food.countErika || 0) > 0;
+  const v = (food.countVinicius || 0) > 0;
+
+  if (e && v) return "marked-both"; // verde
+  if (e) return "marked-erika"; // vermelho
+  if (v) return "marked-vinicius"; // azul
+  return "";
 }
 
 /***********************
@@ -135,12 +167,10 @@ function getGroup(food) {
  ***********************/
 function createFoodCard(food) {
   const card = document.createElement("div");
-card.className = "food-card";
+  card.className = "food-card";
 
-// se já foi marcado pelo menos 1 vez
-if ((food.count || 0) > 0) {
-  card.classList.add("is-marked");
-}
+  const borderClass = getBorderClass(food);
+  if (borderClass) card.classList.add(borderClass);
 
   const main = document.createElement("div");
 
@@ -150,7 +180,7 @@ if ((food.count || 0) > 0) {
 
   const sub = document.createElement("p");
   sub.className = "food-sub";
-  sub.textContent = `Marcamos: ${food.count || 0} vez(es)`;
+  sub.textContent = `Érika: ${food.countErika || 0} • Vinícius: ${food.countVinicius || 0}`;
 
   main.appendChild(name);
   main.appendChild(sub);
@@ -158,20 +188,34 @@ if ((food.count || 0) > 0) {
   const actions = document.createElement("div");
   actions.className = "food-actions";
 
-  const btnEat = document.createElement("button");
-  btnEat.className = "small primary";
-  btnEat.textContent = "Adicionar";
-  btnEat.addEventListener("click", async () => {
+  const btnErika = document.createElement("button");
+  btnErika.className = "small erika";
+  btnErika.textContent = "Érika";
+  btnErika.addEventListener("click", async () => {
     try {
-      const newState = await markFood(food.id);
+      const newState = await markFood(food.id, "erika");
       render(newState);
-      showToast(`${food.name} marcado!`);
+      showToast(`Érika marcou: ${food.name}`);
     } catch (e) {
       showToast(e.message);
     }
   });
 
-  actions.appendChild(btnEat);
+  const btnVinicius = document.createElement("button");
+  btnVinicius.className = "small vinicius";
+  btnVinicius.textContent = "Vinícius";
+  btnVinicius.addEventListener("click", async () => {
+    try {
+      const newState = await markFood(food.id, "vinicius");
+      render(newState);
+      showToast(`Vinícius marcou: ${food.name}`);
+    } catch (e) {
+      showToast(e.message);
+    }
+  });
+
+  actions.appendChild(btnErika);
+  actions.appendChild(btnVinicius);
 
   card.appendChild(main);
   card.appendChild(actions);
@@ -179,16 +223,58 @@ if ((food.count || 0) > 0) {
   return card;
 }
 
+function renderLogList(listEl, entries) {
+  listEl.innerHTML = "";
+  const last = [...entries].slice(-25).reverse();
+
+  if (last.length === 0) {
+    const li = document.createElement("li");
+    li.className = "log-item";
+    li.innerHTML = `
+      <div class="log-left">
+        <div class="log-food">Nada ainda</div>
+        <div class="log-meta">Comece marcando uma comida</div>
+      </div>`;
+    listEl.appendChild(li);
+    return;
+  }
+
+  last.forEach((entry) => {
+    const li = document.createElement("li");
+    li.className = "log-item";
+
+    const left = document.createElement("div");
+    left.className = "log-left";
+
+    const food = document.createElement("div");
+    food.className = "log-food";
+    food.textContent = entry.foodName;
+
+    const meta = document.createElement("div");
+    meta.className = "log-meta";
+    meta.textContent = formatTime(entry.tsISO);
+
+    left.appendChild(food);
+    left.appendChild(meta);
+
+    li.appendChild(left);
+    listEl.appendChild(li);
+  });
+}
+
 function render(state) {
   const gridChurrasco = el("foods-grid-churrasco");
   const gridSobremesas = el("foods-grid-sobremesas");
-  const logList = el("log-list");
+
   const pill = el("summary-pill");
+
+  const listErika = el("log-list-erika");
+  const listVinicius = el("log-list-vinicius");
 
   const { items, totalMarks } = computeSummary(state);
   if (pill) pill.textContent = `${items} itens • ${totalMarks} marcados`;
 
-  // Foods (duas seções)
+  // foods (duas seções)
   if (gridChurrasco) gridChurrasco.innerHTML = "";
   if (gridSobremesas) gridSobremesas.innerHTML = "";
 
@@ -196,86 +282,44 @@ function render(state) {
     const group = getGroup(food);
     const target = group === "sobremesas" ? gridSobremesas : gridChurrasco;
     if (!target) return;
-
     target.appendChild(createFoodCard(food));
   });
 
-  // Log (últimos 25)
-  if (logList) {
-    logList.innerHTML = "";
-    const last = [...(state.log || [])].slice(-25).reverse();
+  // logs por pessoa (abas)
+  const logErika = (state.log || []).filter((x) => x.by === "erika");
+  const logVinicius = (state.log || []).filter((x) => x.by === "vinicius");
 
-    if (last.length === 0) {
-      const li = document.createElement("li");
-      li.className = "log-item";
-      li.innerHTML = `
-        <div class="log-left">
-          <div class="log-food">Nada ainda</div>
-          <div class="log-meta">Comece marcando uma comida</div>
-        </div>`;
-      logList.appendChild(li);
-    } else {
-      last.forEach((entry) => {
-        const li = document.createElement("li");
-        li.className = "log-item";
-
-        const left = document.createElement("div");
-        left.className = "log-left";
-
-        const food = document.createElement("div");
-        food.className = "log-food";
-        food.textContent = entry.foodName;
-
-        const meta = document.createElement("div");
-        meta.className = "log-meta";
-        meta.textContent = formatTime(entry.tsISO);
-
-        left.appendChild(food);
-        left.appendChild(meta);
-
-        li.appendChild(left);
-        logList.appendChild(li);
-      });
-    }
-  }
+  if (listErika) renderLogList(listErika, logErika);
+  if (listVinicius) renderLogList(listVinicius, logVinicius);
 }
 
 /***********************
- * ACTIONS (Worker ou fallback local)
+ * ACTIONS
  ***********************/
-async function markFood(foodId) {
-  if (USE_API) return apiMark(foodId);
+async function markFood(foodId, by) {
+  if (by !== "erika" && by !== "vinicius") {
+    throw new Error("Parâmetro inválido (by).");
+  }
+
+  if (USE_API) return normalizeState(await apiMark(foodId, by));
 
   const state = loadLocalState();
   const food = state.foods.find((f) => f.id === foodId);
   if (!food) throw new Error("Comida não encontrada.");
 
-  food.count = (food.count || 0) + 1;
-  state.log.push({ foodId, foodName: food.name, tsISO: new Date().toISOString() });
-  saveLocalState(state);
-  return state;
-}
+  food.countErika = food.countErika || 0;
+  food.countVinicius = food.countVinicius || 0;
 
-async function addFood({ name }) {
-  const cleaned = (name || "").trim();
-  if (!cleaned) throw new Error("Digite um nome.");
+  if (by === "erika") food.countErika += 1;
+  if (by === "vinicius") food.countVinicius += 1;
 
-  if (USE_API) return apiAdd(cleaned);
-
-  const state = loadLocalState();
-  const id = safeIdFromName(cleaned);
-
-  if (state.foods.some((f) => f.id === id)) {
-    throw new Error("Essa comida já existe.");
-  }
-
-  state.foods.push({ id, name: cleaned, group: "churrasco", count: 0 });
+  state.log.push({ foodId, foodName: food.name, by, tsISO: new Date().toISOString() });
   saveLocalState(state);
   return state;
 }
 
 async function clearLog() {
-  if (USE_API) return apiClearLog();
+  if (USE_API) return normalizeState(await apiClearLog());
 
   const state = loadLocalState();
   state.log = [];
@@ -284,11 +328,41 @@ async function clearLog() {
 }
 
 async function resetAll() {
-  if (USE_API) return apiReset();
+  if (USE_API) return normalizeState(await apiReset());
 
   const state = getInitialState();
   saveLocalState(state);
   return state;
+}
+
+/***********************
+ * TABS (Histórico)
+ ***********************/
+function setActiveTab(which) {
+  const tabErika = el("tab-erika");
+  const tabVinicius = el("tab-vinicius");
+  const panelErika = el("panel-erika");
+  const panelVinicius = el("panel-vinicius");
+
+  const isErika = which === "erika";
+
+  if (tabErika) {
+    tabErika.classList.toggle("is-active", isErika);
+    tabErika.setAttribute("aria-selected", String(isErika));
+  }
+  if (tabVinicius) {
+    tabVinicius.classList.toggle("is-active", !isErika);
+    tabVinicius.setAttribute("aria-selected", String(!isErika));
+  }
+
+  if (panelErika) {
+    panelErika.classList.toggle("is-active", isErika);
+    panelErika.hidden = !isErika;
+  }
+  if (panelVinicius) {
+    panelVinicius.classList.toggle("is-active", !isErika);
+    panelVinicius.hidden = isErika;
+  }
 }
 
 /***********************
@@ -314,12 +388,18 @@ function showToast(message, duration = 2500) {
  * INIT
  ***********************/
 document.addEventListener("DOMContentLoaded", async () => {
-  const form = el("add-form");
-  const nameInput = el("food-name");
   const btnReset = el("btn-reset");
   const btnClearLog = el("btn-clear-log");
 
-  // Carrega do servidor
+  const tabErika = el("tab-erika");
+  const tabVinicius = el("tab-vinicius");
+
+  // tabs
+  if (tabErika) tabErika.addEventListener("click", () => setActiveTab("erika"));
+  if (tabVinicius) tabVinicius.addEventListener("click", () => setActiveTab("vinicius"));
+  setActiveTab("erika");
+
+  // carrega do servidor
   try {
     const state = await loadState();
     if (!USE_API) saveLocalState(state);
@@ -329,24 +409,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     showToast("Erro ao carregar estado do servidor.");
   }
 
-  // Adicionar
-  if (form) {
-    form.addEventListener("submit", async (ev) => {
-      ev.preventDefault();
-      const name = nameInput?.value || "";
-
-      try {
-        const newState = await addFood({ name });
-        render(newState);
-        if (nameInput) nameInput.value = "";
-        showToast("Comida adicionada!");
-      } catch (e) {
-        showToast(e.message);
-      }
-    });
-  }
-
-  // Limpar histórico
+  // limpar histórico
   if (btnClearLog) {
     btnClearLog.addEventListener("click", async () => {
       try {
@@ -359,10 +422,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  // Reset
+  // reset
   if (btnReset) {
     btnReset.addEventListener("click", async () => {
-      const sure = confirm("Zerar tudo (lista e histórico)?");
+      const sure = confirm("Zerar tudo (contadores e histórico)?");
       if (!sure) return;
 
       try {
