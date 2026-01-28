@@ -72,6 +72,12 @@ async function apiGetState() {
   return apiRequest("/state");
 }
 
+async function apiAdd(name, group = "churrasco") {
+  // o Worker aceita group opcional (se o seu não aceitar, ele vai ignorar)
+  const data = await apiRequest("/add", { method: "POST", body: { name, group } });
+  return data.state;
+}
+
 async function apiMark(foodId, by) {
   const data = await apiRequest("/mark", { method: "POST", body: { foodId, by } });
   return data.state;
@@ -117,18 +123,26 @@ function getGroup(food) {
  * - estados antigos com "count"
  * - estados sem "group"
  * - garante countErika/countVinicius
+ * - garante itens novos (adicionados via worker antigo) com contadores
  */
 function normalizeState(state) {
   const foods = (state.foods || []).map((f) => {
     const group = getGroup(f);
 
-    // se vier o modelo antigo (count)
+    // legado: "count" (único)
     const legacyCount = typeof f.count === "number" ? f.count : null;
 
     const countErika =
-      typeof f.countErika === "number" ? f.countErika : legacyCount ? legacyCount : 0;
+      typeof f.countErika === "number"
+        ? f.countErika
+        : legacyCount != null
+          ? legacyCount
+          : 0;
+
     const countVinicius =
-      typeof f.countVinicius === "number" ? f.countVinicius : 0;
+      typeof f.countVinicius === "number"
+        ? f.countVinicius
+        : 0;
 
     return {
       ...f,
@@ -139,7 +153,6 @@ function normalizeState(state) {
   });
 
   const log = Array.isArray(state.log) ? state.log : [];
-
   return { ...state, foods, log };
 }
 
@@ -156,9 +169,9 @@ function getBorderClass(food) {
   const e = (food.countErika || 0) > 0;
   const v = (food.countVinicius || 0) > 0;
 
-  if (e && v) return "marked-both"; // verde
-  if (e) return "marked-erika"; // vermelho
-  if (v) return "marked-vinicius"; // azul
+  if (e && v) return "marked-both";     // verde
+  if (e) return "marked-erika";         // vermelho
+  if (v) return "marked-vinicius";      // azul
   return "";
 }
 
@@ -190,6 +203,7 @@ function createFoodCard(food) {
 
   const btnErika = document.createElement("button");
   btnErika.className = "small erika";
+  btnErika.type = "button";
   btnErika.textContent = "Érika";
   btnErika.addEventListener("click", async () => {
     try {
@@ -203,6 +217,7 @@ function createFoodCard(food) {
 
   const btnVinicius = document.createElement("button");
   btnVinicius.className = "small vinicius";
+  btnVinicius.type = "button";
   btnVinicius.textContent = "Vinícius";
   btnVinicius.addEventListener("click", async () => {
     try {
@@ -265,7 +280,6 @@ function renderLogList(listEl, entries) {
 function render(state) {
   const gridChurrasco = el("foods-grid-churrasco");
   const gridSobremesas = el("foods-grid-sobremesas");
-
   const pill = el("summary-pill");
 
   const listErika = el("log-list-erika");
@@ -274,7 +288,6 @@ function render(state) {
   const { items, totalMarks } = computeSummary(state);
   if (pill) pill.textContent = `${items} itens • ${totalMarks} marcados`;
 
-  // foods (duas seções)
   if (gridChurrasco) gridChurrasco.innerHTML = "";
   if (gridSobremesas) gridSobremesas.innerHTML = "";
 
@@ -285,7 +298,6 @@ function render(state) {
     target.appendChild(createFoodCard(food));
   });
 
-  // logs por pessoa (abas)
   const logErika = (state.log || []).filter((x) => x.by === "erika");
   const logVinicius = (state.log || []).filter((x) => x.by === "vinicius");
 
@@ -296,10 +308,24 @@ function render(state) {
 /***********************
  * ACTIONS
  ***********************/
-async function markFood(foodId, by) {
-  if (by !== "erika" && by !== "vinicius") {
-    throw new Error("Parâmetro inválido (by).");
+async function addFood(name, group = "churrasco") {
+  const cleaned = (name || "").trim();
+  if (!cleaned) throw new Error("Digite um nome.");
+
+  if (USE_API) {
+    const state = await apiAdd(cleaned, group);
+    return normalizeState(state);
   }
+
+  const state = loadLocalState();
+  // id gerado no worker no modo API; no local você poderia gerar também se quisesse
+  state.foods.push({ id: `food-${Date.now()}`, name: cleaned, group, countErika: 0, countVinicius: 0 });
+  saveLocalState(state);
+  return state;
+}
+
+async function markFood(foodId, by) {
+  if (by !== "erika" && by !== "vinicius") throw new Error("Parâmetro inválido (by).");
 
   if (USE_API) return normalizeState(await apiMark(foodId, by));
 
@@ -388,6 +414,9 @@ function showToast(message, duration = 2500) {
  * INIT
  ***********************/
 document.addEventListener("DOMContentLoaded", async () => {
+  const form = el("add-form");
+  const nameInput = el("food-name");
+
   const btnReset = el("btn-reset");
   const btnClearLog = el("btn-clear-log");
 
@@ -407,6 +436,24 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch (e) {
     console.error(e);
     showToast("Erro ao carregar estado do servidor.");
+  }
+
+  // adicionar comida (isso estava faltando no seu JS!)
+  if (form) {
+    form.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const name = nameInput?.value || "";
+
+      try {
+        // por padrão, adiciona em churrasco
+        const newState = await addFood(name, "churrasco");
+        render(newState);
+        if (nameInput) nameInput.value = "";
+        showToast("Comida adicionada!");
+      } catch (e) {
+        showToast(e.message);
+      }
+    });
   }
 
   // limpar histórico
